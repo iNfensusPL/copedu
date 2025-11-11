@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">254409714237</string>
+    <string name="google_api_key" translatable="false">AIzaSyD22UWIh0W23VP8mLfK7IjHU3RTI_p8HgQ</string>
+    <string name="google_app_id" translatable="false">1:254409714237:android:08a28d6ab2d705f6219854</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyD22UWIh0W23VP8mLfK7IjHU3RTI_p8HgQ</string>
+    <string name="google_storage_bucket" translatable="false">copedu-1585a.firebasestorage.app</string>
+    <string name="project_id" translatable="false">copedu-1585a</string>
+</resources>

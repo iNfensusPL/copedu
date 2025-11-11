@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "254409714237",
+    "project_id": "copedu-1585a",
+    "storage_bucket": "copedu-1585a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:254409714237:android:08a28d6ab2d705f6219854",
+        "android_client_info": {
+          "package_name": "com.ptoo.copedu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD22UWIh0W23VP8mLfK7IjHU3RTI_p8HgQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
