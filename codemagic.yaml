@@ -1,0 +1,8 @@
+echo "=== Pre-iOS clean ==="
+flutter --version
+flutter clean
+rm -f ios/Flutter/Generated.xcconfig
+rm -f ios/Flutter/Flutter.podspec
+rm -rf ios/Pods
+rm -rf ios/.symlinks
+flutter pub get
