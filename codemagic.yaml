@@ -1,4 +1,3 @@
-echo "=== Pre-iOS clean ==="
 flutter --version
 flutter clean
 rm -f ios/Flutter/Generated.xcconfig
