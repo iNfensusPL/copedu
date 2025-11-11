@@ -1,7 +1,24 @@
-flutter --version
-flutter clean
-rm -f ios/Flutter/Generated.xcconfig
-rm -f ios/Flutter/Flutter.podspec
-rm -rf ios/Pods
-rm -rf ios/.symlinks
-flutter pub get
+workflows:
+  ios-release:
+    name: iOS Release
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Pre-iOS clean
+        script: |
+          echo "=== Pre-iOS clean ==="
+          flutter --version
+          flutter clean
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/Flutter.podspec
+          rm -rf ios/Pods
+          rm -rf ios/.symlinks
+          flutter pub get
+      - name: Build iOS (no codesign)
+        script: |
+          flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
