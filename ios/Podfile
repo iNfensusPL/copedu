@@ -24,7 +24,8 @@ require File.expand_path(File.join(flutter_root, 'packages', 'flutter_tools', 'b
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  # NIE dodawaj tu use_frameworks! / use_modular_headers! dopóki nie jest potrzebne
+  # statyczne linkowanie pomaga uniknąć konfliktów (Firebase, audioplayers itp.)
+  use_frameworks! :linkage => :static
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 end
 
