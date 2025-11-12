@@ -427,6 +427,21 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
+                /* ⬇⬇⬇ DODAJ TO PONIŻEJ ⬇⬇⬇ */
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: loading
+                      ? null
+                      : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DeleteAccountPage()),
+                    );
+                  },
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  label: const Text('Usuń konto'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                ),
+/* ⬆⬆⬆ KONIEC DODATKU ⬆⬆⬆ */
               ],
             ),
           ),
@@ -642,6 +657,192 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
+class DeleteAccountPage extends StatefulWidget {
+  const DeleteAccountPage({super.key});
+
+  @override
+  State<DeleteAccountPage> createState() => _DeleteAccountPageState();
+}
+
+class _DeleteAccountPageState extends State<DeleteAccountPage> {
+  final email = TextEditingController();
+  final password = TextEditingController();
+  bool loading = false;
+  String? error;
+  bool consent = false;
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _deleteBatch(Query<Map<String, dynamic>> baseQuery, {int batchSize = 300}) async {
+    final db = FirebaseFirestore.instance;
+    while (true) {
+      final snap = await baseQuery.limit(batchSize).get();
+      if (snap.docs.isEmpty) break;
+      final batch = db.batch();
+      for (final d in snap.docs) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+      if (snap.docs.length < batchSize) break;
+    }
+  }
+
+  Future<void> _deleteUserData(String uid) async {
+    final db = FirebaseFirestore.instance;
+
+    // users/{uid}
+    try { await db.collection('users').doc(uid).delete(); } catch (_) {}
+
+    // scans: wszystkie, które należą do użytkownika jako "userId"
+    await _deleteBatch(db.collection('scans').where('userId', isEqualTo: uid));
+
+    // user_exhibitor_points: pary user–exhibitor
+    await _deleteBatch(db.collection('user_exhibitor_points').where('userId', isEqualTo: uid));
+
+    // game_scores: wyniki gry
+    await _deleteBatch(db.collection('game_scores').where('userId', isEqualTo: uid));
+  }
+
+  Future<void> _onDelete() async {
+    setState(() { loading = true; error = null; });
+
+    try {
+      final mail = email.text.trim();
+      final pass = password.text;
+
+      if (!mail.contains('@') || pass.isEmpty) {
+        setState(() => error = 'Podaj poprawny e-mail i hasło.');
+        return;
+      }
+      if (!consent) {
+        setState(() => error = 'Zaznacz potwierdzenie usunięcia konta.');
+        return;
+      }
+
+      // 1) Zaloguj (jeśli nie zalogowany) – to daje „recent login”
+      await FirebaseAuth.instance.signInWithEmailAndPassword(email: mail, password: pass);
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() => error = 'Nie udało się uwierzytelnić użytkownika.');
+        return;
+      }
+
+      // 2) (opcjonalnie) dodatkowy reauth — bywa wymagany na iOS/Web
+      final cred = EmailAuthProvider.credential(email: mail, password: pass);
+      await user.reauthenticateWithCredential(cred);
+
+      // 3) Potwierdzenie
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Usunąć konto?'),
+          content: const Text(
+            'Tej operacji nie można cofnąć. Zostaną usunięte dane profilu '
+                'i powiązane wpisy (punkty, skany, wyniki gry).',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Anuluj')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Usuń')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+
+      // 4) Sprzątanie w Firestore
+      await _deleteUserData(user.uid);
+
+      // 5) Usunięcie konta z Auth
+      await user.delete();
+
+      // 6) Wyloguj i wróć do ekranu startowego
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      _snack('Konto zostało usunięte.');
+      Navigator.of(context).popUntil((r) => r.isFirst);
+
+    } on FirebaseAuthException catch (e) {
+      setState(() => error = '${e.code}: ${e.message}');
+    } catch (e) {
+      setState(() => error = 'Błąd: $e');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Usuń konto')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Aby usunąć konto, podaj e-mail i hasło do logowania.',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Hasło',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  value: consent,
+                  onChanged: (v) => setState(() => consent = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Rozumiem, że to działanie jest nieodwracalne.'),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: const TextStyle(color: Colors.red)),
+                ],
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: loading ? null : _onDelete,
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  label: loading
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Usuń konto na zawsze'),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 /// --- SKANER QR ---
 /// Skanuje kody w formacie: EXHIBITOR:<exhibitorId>
 /// Po zeskanowaniu przyznaje 1 punkt użytkownikowi (1x na wystawcę)
